@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Field Log — Task Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12161a;
+    --surface: #1b2126;
+    --surface-raised: #212a30;
+    --line: #303a40;
+    --ink: #e9ece7;
+    --ink-dim: #9aa5a3;
+    --ink-faint: #626e6c;
+    --moss: #7fa893;
+    --moss-bright: #9bc4ac;
+    --brass: #d4a657;
+    --stamp: #c0563f;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, #1a2126 0%, var(--bg) 55%);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    padding:32px 16px 60px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .sheet{
+    width:100%;
+    max-width:560px;
+  }
+
+  /* HEADER */
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px;
+    margin-bottom:20px;
+  }
+  .masthead h1{
+    font-family:var(--font-mono);
+    font-size:22px;
+    letter-spacing:0.14em;
+    margin:0 0 4px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .masthead .sub{
+    font-size:12px;
+    color:var(--ink-faint);
+    letter-spacing:0.04em;
+  }
+  .date-block{
+    text-align:right;
+    font-family:var(--font-mono);
+  }
+  .date-block .day{
+    font-size:12px;
+    color:var(--brass);
+    letter-spacing:0.08em;
+  }
+  .date-block .full{
+    font-size:11px;
+    color:var(--ink-faint);
+  }
+
+  /* PROGRESS / SIGNATURE ELEMENT */
+  .ledger-gauge{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px 16px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .gauge-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:10px;
+    font-family:var(--font-mono);
+  }
+  .gauge-top .label{
+    font-size:11px;
+    letter-spacing:0.12em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+  }
+  .gauge-top .count{
+    font-size:13px;
+    color:var(--moss-bright);
+  }
+  .gauge-track{
+    height:8px;
+    background:#0f1316;
+    border:1px solid var(--line);
+    border-radius:2px;
+    overflow:hidden;
+    position:relative;
+  }
+  .gauge-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--moss), var(--moss-bright));
+    width:0%;
+    transition:width .5s cubic-bezier(.4,0,.2,1);
+    position:relative;
+  }
+  .tally{
+    display:flex;
+    gap:3px;
+    margin-top:10px;
+  }
+  .tally i{
+    flex:1;
+    height:3px;
+    background:var(--line);
+    border-radius:1px;
+  }
+  .tally i.filled{
+    background:var(--brass);
+  }
+
+  /* ADD ROW */
+  .add-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:24px;
+  }
+  .add-row input{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    color:var(--ink);
+    font-family:var(--font-sans);
+    font-size:14px;
+    padding:12px 14px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .add-row input::placeholder{ color:var(--ink-faint); }
+  .add-row input:focus{ border-color:var(--moss); }
+  .add-row button{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.08em;
+    background:var(--moss);
+    color:#12161a;
+    border:none;
+    border-radius:4px;
+    padding:0 18px;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .15s, transform .1s;
+  }
+  .add-row button:hover{ background:var(--moss-bright); }
+  .add-row button:active{ transform:scale(0.96); }
+
+  /* ENTRIES */
+  .entries{
+    list-style:none;
+    margin:0 0 18px;
+    padding:0;
+    border-top:1px solid var(--line);
+  }
+  .entry{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:14px 2px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .entry .idx{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--ink-faint);
+    width:22px;
+    padding-top:3px;
+    flex-shrink:0;
+  }
+  .stamp-box{
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    border:2px solid var(--ink-faint);
+    flex-shrink:0;
+    cursor:pointer;
+    position:relative;
+    margin-top:1px;
+    transition:border-color .2s;
+    background:transparent;
+  }
+  .stamp-box:hover{ border-color:var(--moss-bright); }
+  .stamp-box.done{
+    border-color:var(--stamp);
+  }
+  .stamp-box svg{
+    position:absolute;
+    top:-6px; left:-6px;
+    width:34px;
+    height:34px;
+    pointer-events:none;
+    opacity:0;
+    transform:rotate(-18deg) scale(0.6);
+  }
+  .stamp-box.done svg{
+    animation:stampIn .3s cubic-bezier(.2,1.5,.4,1) forwards;
+  }
+  @keyframes stampIn{
+    0%{ opacity:0; transform:rotate(-18deg) scale(0.5); }
+    60%{ opacity:1; transform:rotate(4deg) scale(1.12); }
+    100%{ opacity:1; transform:rotate(-6deg) scale(1); }
+  }
+
+  .entry-body{ flex:1; min-width:0; }
+  .entry-text{
+    font-size:14.5px;
+    line-height:1.5;
+    color:var(--ink);
+    position:relative;
+    display:inline;
+    word-break:break-word;
+  }
+  .entry.done .entry-text{ color:var(--ink-faint); }
+  .strike-path{
+    stroke:var(--stamp);
+    stroke-width:2;
+    fill:none;
+    stroke-linecap:round;
+    stroke-dasharray:300;
+    stroke-dashoffset:300;
+  }
+  .entry.done .strike-path{
+    animation:drawLine .35s ease forwards .05s;
+  }
+  @keyframes drawLine{ to{ stroke-dashoffset:0; } }
+  .strike-svg{
+    position:absolute;
+    left:0; top:0;
+    width:100%; height:100%;
+    overflow:visible;
+    pointer-events:none;
+  }
+  .entry-meta{
+    font-family:var(--font-mono);
+    font-size:10px;
+    color:var(--ink-faint);
+    margin-top:4px;
+  }
+
+  .del-btn{
+    background:none;
+    border:none;
+    color:var(--ink-faint);
+    font-size:16px;
+    cursor:pointer;
+    padding:0 2px;
+    line-height:1;
+    opacity:0.5;
+    transition:opacity .15s, color .15s;
+    flex-shrink:0;
+  }
+  .del-btn:hover{ opacity:1; color:var(--stamp); }
+
+  .empty{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--ink-faint);
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    letter-spacing:0.03em;
+    border-top:1px solid var(--line);
+  }
+  .empty span{ display:block; margin-top:6px; color:var(--ink-dim); font-family:var(--font-sans); font-size:13px; }
+
+  /* FOOTER */
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:var(--font-mono);
+    font-size:11.5px;
+  }
+  .filters{ display:flex; gap:4px; }
+  .filters button{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-faint);
+    padding:6px 11px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.04em;
+    transition:all .15s;
+  }
+  .filters button.active{
+    border-color:var(--moss);
+    color:var(--moss-bright);
+  }
+  .clear-btn{
+    background:none;
+    border:none;
+    color:var(--ink-faint);
+    cursor:pointer;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.03em;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .clear-btn:hover{ color:var(--stamp); }
+
+  ::selection{ background:var(--moss); color:#12161a; }
+
+  @media (prefers-reduced-motion: reduce){
+    .stamp-box.done svg, .strike-path{ animation:none !important; opacity:1; stroke-dashoffset:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="masthead">
+    <div>
+      <h1>FIELD LOG</h1>
+      <div class="sub">a personal tracking ledger</div>
+    </div>
+    <div class="date-block">
+      <div class="day" id="dayLabel">—</div>
+      <div class="full" id="dateLabel">—</div>
+    </div>
+  </div>
+
+  <div class="ledger-gauge">
+    <div class="gauge-top">
+      <span class="label">Today's progress</span>
+      <span class="count" id="countLabel">0 / 0 logged</span>
+    </div>
+    <div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div>
+    <div class="tally" id="tally"></div>
+  </div>
+
+  <form class="add-row" id="addForm" autocomplete="off">
+    <input type="text" id="taskInput" placeholder="Log a task…" maxlength="140">
+    <button type="submit">+ Add</button>
+  </form>
+
+  <ul class="entries" id="entries"></ul>
+  <div class="empty" id="emptyState" style="display:none;">
+    NOTHING LOGGED YET
+    <span>Add your first task above to start tracking.</span>
+  </div>
+
+  <div class="footer-row">
+    <div class="filters" id="filters">
+      <button data-filter="all" class="active">All</button>
+      <button data-filter="active">Active</button>
+      <button data-filter="done">Done</button>
+    </div>
+    <button class="clear-btn" id="clearDone">clear completed</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'tasks';
+  let tasks = [];
+  let filter = 'all';
+
+  const entriesEl = document.getElementById('entries');
+  const emptyEl = document.getElementById('emptyState');
+  const countLabel = document.getElementById('countLabel');
+  const gaugeFill = document.getElementById('gaugeFill');
+  const tallyEl = document.getElementById('tally');
+  const addForm = document.getElementById('addForm');
+  const taskInput = document.getElementById('taskInput');
+  const filtersEl = document.getElementById('filters');
+  const clearDoneBtn = document.getElementById('clearDone');
+
+  function setDate(){
+    const now = new Date();
+    document.getElementById('dayLabel').textContent = now.toLocaleDateString(undefined,{weekday:'long'}).toUpperCase();
+    document.getElementById('dateLabel').textContent = now.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+  }
+
+  async function load(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      tasks = res && res.value ? JSON.parse(res.value) : [];
+    }catch(e){
+      tasks = [];
+    }
+    render();
+  }
+
+  async function save(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(tasks), false);
+    }catch(e){
+      console.error('Could not save tasks', e);
+    }
+  }
+
+  function uid(){ return 't'+Date.now()+Math.random().toString(36).slice(2,7); }
+
+  function addTask(text){
+    tasks.unshift({ id: uid(), text: text, completed:false, createdAt: Date.now() });
+    save(); render();
+  }
+
+  function toggleTask(id){
+    const t = tasks.find(x=>x.id===id);
+    if(t){ t.completed = !t.completed; save(); render(); }
+  }
+
+  function deleteTask(id){
+    tasks = tasks.filter(x=>x.id!==id);
+    save(); render();
+  }
+
+  function clearCompleted(){
+    tasks = tasks.filter(x=>!x.completed);
+    save(); render();
+  }
+
+  function strikeSvg(){
+    return '<svg class="strike-svg" preserveAspectRatio="none"><path class="strike-path" d="M2,10 Q40,4 80,11 T220,9" vector-effect="non-scaling-stroke"/></svg>';
+  }
+
+  function render(){
+    const total = tasks.length;
+    const done = tasks.filter(t=>t.completed).length;
+    countLabel.textContent = done+' / '+total+' logged';
+    gaugeFill.style.width = total ? (done/total*100)+'%' : '0%';
+
+    tallyEl.innerHTML = '';
+    const slots = Math.max(total, 8);
+    for(let i=0;i<slots;i++){
+      const mark = document.createElement('i');
+      if(i < done) mark.classList.add('filled');
+      tallyEl.appendChild(mark);
+    }
+
+    let visible = tasks;
+    if(filter==='active') visible = tasks.filter(t=>!t.completed);
+    if(filter==='done') visible = tasks.filter(t=>t.completed);
+
+    entriesEl.innerHTML = '';
+    emptyEl.style.display = tasks.length===0 ? 'block' : 'none';
+
+    if(tasks.length>0 && visible.length===0){
+      const li = document.createElement('li');
+      li.style.padding = '20px 2px';
+      li.style.color = 'var(--ink-faint)';
+      li.style.fontFamily = 'var(--font-mono)';
+      li.style.fontSize = '12px';
+      li.style.textAlign = 'center';
+      li.textContent = filter==='done' ? 'No completed entries yet.' : 'No active entries — nice work.';
+      entriesEl.appendChild(li);
+      return;
+    }
+
+    visible.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = 'entry' + (t.completed ? ' done' : '');
+
+      const idx = document.createElement('div');
+      idx.className = 'idx';
+      idx.textContent = String(i+1).padStart(2,'0');
+
+      const stampBox = document.createElement('div');
+      stampBox.className = 'stamp-box' + (t.completed ? ' done' : '');
+      stampBox.innerHTML = '<svg viewBox="0 0 34 34"><path d="M8 17 L14 23 L26 9" stroke="#c0563f" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      stampBox.addEventListener('click', ()=>toggleTask(t.id));
+
+      const body = document.createElement('div');
+      body.className = 'entry-body';
+
+      const textWrap = document.createElement('div');
+      textWrap.style.position='relative';
+      textWrap.style.display='inline-block';
+      const textSpan = document.createElement('span');
+      textSpan.className = 'entry-text';
+      textSpan.textContent = t.text;
+      textWrap.appendChild(textSpan);
+      if(t.completed){
+        const svgWrap = document.createElement('div');
+        svgWrap.innerHTML = strikeSvg();
+        textWrap.appendChild(svgWrap.firstChild);
+      }
+      body.appendChild(textWrap);
+
+      const meta = document.createElement('div');
+      meta.className = 'entry-meta';
+      const d = new Date(t.createdAt);
+      meta.textContent = 'logged ' + d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+      body.appendChild(meta);
+
+      const del = document.createElement('button');
+      del.className = 'del-btn';
+      del.textContent = '×';
+      del.title = 'Delete';
+      del.addEventListener('click', ()=>deleteTask(t.id));
+
+      li.appendChild(idx);
+      li.appendChild(stampBox);
+      li.appendChild(body);
+      li.appendChild(del);
+      entriesEl.appendChild(li);
+    });
+  }
+
+  addForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const val = taskInput.value.trim();
+    if(!val) return;
+    addTask(val);
+    taskInput.value = '';
+    taskInput.focus();
+  });
+
+  filtersEl.addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-filter]');
+    if(!btn) return;
+    filter = btn.dataset.filter;
+    [...filtersEl.children].forEach(b=>b.classList.toggle('active', b===btn));
+    render();
+  });
+
+  clearDoneBtn.addEventListener('click', clearCompleted);
+
+  setDate();
+  load();
+})();
+</script>
+
+</body>
+</html>

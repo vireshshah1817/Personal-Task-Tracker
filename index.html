@@ -400,10 +400,30 @@
     document.getElementById('dateLabel').textContent = now.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
   }
 
+  // Storage adapter: uses window.storage when running inside a Claude artifact,
+  // falls back to localStorage for standalone deployment (e.g. GitHub Pages).
+  const hasClaudeStorage = typeof window.storage !== 'undefined';
+
+  async function storageGet(key){
+    if(hasClaudeStorage){
+      const res = await window.storage.get(key, false);
+      return res ? res.value : null;
+    }
+    return window.localStorage.getItem(key);
+  }
+
+  async function storageSet(key, value){
+    if(hasClaudeStorage){
+      await window.storage.set(key, value, false);
+    }else{
+      window.localStorage.setItem(key, value);
+    }
+  }
+
   async function load(){
     try{
-      const res = await window.storage.get(STORAGE_KEY, false);
-      tasks = res && res.value ? JSON.parse(res.value) : [];
+      const val = await storageGet(STORAGE_KEY);
+      tasks = val ? JSON.parse(val) : [];
     }catch(e){
       tasks = [];
     }
@@ -412,7 +432,7 @@
 
   async function save(){
     try{
-      await window.storage.set(STORAGE_KEY, JSON.stringify(tasks), false);
+      await storageSet(STORAGE_KEY, JSON.stringify(tasks));
     }catch(e){
       console.error('Could not save tasks', e);
     }

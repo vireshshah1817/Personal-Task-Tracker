@@ -264,6 +264,113 @@
     margin-top:4px;
   }
 
+  .log-toggle{
+    background:none;
+    border:none;
+    color:var(--ink-faint);
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.03em;
+    cursor:pointer;
+    padding:0;
+    margin-top:6px;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    transition:color .15s;
+  }
+  .log-toggle:hover{ color:var(--moss-bright); }
+  .log-toggle .chevron{
+    display:inline-block;
+    transition:transform .18s ease;
+    font-size:9px;
+  }
+  .log-toggle.open .chevron{ transform:rotate(90deg); }
+  .log-badge{
+    background:var(--surface-raised);
+    border:1px solid var(--line);
+    color:var(--brass);
+    border-radius:8px;
+    padding:1px 6px;
+    font-size:9.5px;
+  }
+
+  .log-panel{
+    margin-top:10px;
+    padding:10px 12px;
+    background:var(--surface-raised);
+    border:1px solid var(--line);
+    border-left:2px solid var(--moss);
+    border-radius:0 4px 4px 0;
+  }
+  .log-list{
+    list-style:none;
+    margin:0 0 8px;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .log-item{
+    font-size:13px;
+    line-height:1.5;
+    color:var(--ink-dim);
+    border-bottom:1px dashed var(--line);
+    padding-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .log-item:last-child{ border-bottom:none; padding-bottom:0; }
+  .log-item .log-text{ flex:1; word-break:break-word; }
+  .log-item .log-time{
+    font-family:var(--font-mono);
+    font-size:9.5px;
+    color:var(--ink-faint);
+    white-space:nowrap;
+    padding-top:2px;
+    flex-shrink:0;
+  }
+  .log-item .log-del{
+    background:none; border:none; color:var(--ink-faint);
+    cursor:pointer; opacity:0.5; font-size:13px; padding:0 2px; flex-shrink:0;
+  }
+  .log-item .log-del:hover{ opacity:1; color:var(--stamp); }
+  .log-empty{
+    font-size:12px;
+    color:var(--ink-faint);
+    font-style:italic;
+    margin-bottom:8px;
+  }
+  .log-add-row{
+    display:flex;
+    gap:6px;
+  }
+  .log-add-row input{
+    flex:1;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:3px;
+    color:var(--ink);
+    font-family:var(--font-sans);
+    font-size:12.5px;
+    padding:8px 10px;
+    outline:none;
+  }
+  .log-add-row input:focus{ border-color:var(--moss); }
+  .log-add-row button{
+    font-family:var(--font-mono);
+    font-size:11px;
+    background:var(--moss);
+    color:#12161a;
+    border:none;
+    border-radius:3px;
+    padding:0 12px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .log-add-row button:hover{ background:var(--moss-bright); }
+
   .del-btn{
     background:none;
     border:none;
@@ -383,6 +490,7 @@
   const STORAGE_KEY = 'tasks';
   let tasks = [];
   let filter = 'all';
+  const expandedLogs = new Set();
 
   const entriesEl = document.getElementById('entries');
   const emptyEl = document.getElementById('emptyState');
@@ -441,8 +549,30 @@
   function uid(){ return 't'+Date.now()+Math.random().toString(36).slice(2,7); }
 
   function addTask(text){
-    tasks.unshift({ id: uid(), text: text, completed:false, createdAt: Date.now() });
+    tasks.unshift({ id: uid(), text: text, completed:false, createdAt: Date.now(), logs: [] });
     save(); render();
+  }
+
+  function addLog(taskId, text){
+    const t = tasks.find(x=>x.id===taskId);
+    if(!t) return;
+    if(!t.logs) t.logs = [];
+    t.logs.push({ id: uid(), text: text, createdAt: Date.now() });
+    expandedLogs.add(taskId);
+    save(); render();
+  }
+
+  function deleteLog(taskId, logId){
+    const t = tasks.find(x=>x.id===taskId);
+    if(!t || !t.logs) return;
+    t.logs = t.logs.filter(l=>l.id!==logId);
+    save(); render();
+  }
+
+  function toggleLogPanel(taskId){
+    if(expandedLogs.has(taskId)) expandedLogs.delete(taskId);
+    else expandedLogs.add(taskId);
+    render();
   }
 
   function toggleTask(id){
@@ -532,6 +662,57 @@
       const d = new Date(t.createdAt);
       meta.textContent = 'logged ' + d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
       body.appendChild(meta);
+
+      const logs = t.logs || [];
+      const isOpen = expandedLogs.has(t.id);
+
+      const logToggle = document.createElement('button');
+      logToggle.className = 'log-toggle' + (isOpen ? ' open' : '');
+      logToggle.innerHTML = '<span class="chevron">▸</span><span>worklog</span>' +
+        (logs.length ? '<span class="log-badge">'+logs.length+'</span>' : '');
+      logToggle.addEventListener('click', ()=>toggleLogPanel(t.id));
+      body.appendChild(logToggle);
+
+      if(isOpen){
+        const panel = document.createElement('div');
+        panel.className = 'log-panel';
+
+        if(logs.length){
+          const list = document.createElement('ul');
+          list.className = 'log-list';
+          logs.slice().reverse().forEach(log=>{
+            const li2 = document.createElement('li');
+            li2.className = 'log-item';
+            const ld = new Date(log.createdAt);
+            const timeStr = ld.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' · ' + ld.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+            li2.innerHTML = '<span class="log-text"></span><span class="log-time"></span><button class="log-del" title="Delete entry">×</button>';
+            li2.querySelector('.log-text').textContent = log.text;
+            li2.querySelector('.log-time').textContent = timeStr;
+            li2.querySelector('.log-del').addEventListener('click', ()=>deleteLog(t.id, log.id));
+            list.appendChild(li2);
+          });
+          panel.appendChild(list);
+        }else{
+          const emptyLog = document.createElement('div');
+          emptyLog.className = 'log-empty';
+          emptyLog.textContent = 'No worklog entries yet.';
+          panel.appendChild(emptyLog);
+        }
+
+        const logAddRow = document.createElement('form');
+        logAddRow.className = 'log-add-row';
+        logAddRow.innerHTML = '<input type="text" placeholder="Add a worklog entry…" maxlength="280"><button type="submit">Add</button>';
+        logAddRow.addEventListener('submit', function(e){
+          e.preventDefault();
+          const input = logAddRow.querySelector('input');
+          const val = input.value.trim();
+          if(!val) return;
+          addLog(t.id, val);
+        });
+        panel.appendChild(logAddRow);
+
+        body.appendChild(panel);
+      }
 
       const del = document.createElement('button');
       del.className = 'del-btn';
